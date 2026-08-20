@@ -55,3 +55,6 @@ Examples of processing data are found under /dev/data_workups.
 
 Contributions are welcomed! Best practice is to open an issue with your idea, and I will let you know if it
 is a good fit for the project. If you are interested in helping code the addition please mention that as well. 
+
+## Publication Data
+Data for "Leveraging Automation and Inline and Online Monitoring for Data-Rich Experimentation of Photopolymerization in Segmented Flow" is provided, as well as scrips for analyzing and visualizing this data and training gaussian process regression models. The trained models are also provided. 
