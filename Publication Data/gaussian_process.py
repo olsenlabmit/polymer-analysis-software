@@ -18,7 +18,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize
 from matplotlib.cm import ScalarMappable
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, root_mean_squared_error
 import pickle
 import scipy.stats as stats
 
@@ -78,11 +78,20 @@ res_time = np.interp(all_data['Time (adj) (s)']/60,figureparam['time (min)'], fi
 
 #print(light)
 
+## add mask for when monomer fractions are between 0.05 and 0.95
+mask =(mon_ratio > 0.05) & (mon_ratio < 0.95)
+# print(mask.sum())
+# print((~mask).sum())
 
 #build gaussian process regressor
 X_vals = np.column_stack((res_time, mon_ratio, temp, light))
+X_vals= X_vals[mask]
 Y_vals = all_data[['MA Conv', 'DMA Conv']]
+Y_vals=Y_vals.loc[mask].copy()
 print('conversiondata', Y_vals)
+
+
+
 # kernel = (
 #     ConstantKernel(1.0, (1e-3, 1e3))
 #     * Matern(
@@ -106,10 +115,10 @@ print('conversiondata', Y_vals)
 # # gpr=TransformedTargetRegressor(regressor=gpr_base, transformer=LogitTransformer(low=0.0, high=1.0))
 # gpr.fit(X_vals,Y_vals)
 
-# with open('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/Models/copolymer-NMR-IR-Conversion.pkl','wb') as file:
+# with open('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/Models/copolymer-NMR-IR-Conversion_masked-0.05.pkl','wb') as file:
 #     pickle.dump(gpr, file)
 
-with open('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/Models/copolymer-NMR-IR-Conversion.pkl','rb') as file:
+with open('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/Models/copolymer-NMR-IR-Conversion_masked-0.05.pkl','rb') as file:
     gpr=pickle.load(file)
     
 #build what data we want to evaluate
@@ -136,14 +145,16 @@ ax1.legend(fontsize=16)
 ax1.set_xlabel('Residence Time (min)',fontsize=16)
 ax1.set_ylabel('Conversion', fontsize=16)
 ax1.set_ylim(0,1)
-# plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-conversion-kernel_nmr_data_witherror_T=310_light=0.4_restime=2-8.pdf',dpi=300,bbox_inches='tight')
+plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-conversion-kernel_nmr_data_witherror_T=310_light=0.4_restime=2-8_masked_0.05.pdf',dpi=300,bbox_inches='tight')
 
 #parity plot for conversion data
 outputs_parity, std_parity = gpr.predict(X_vals, return_std=True)
 print(outputs_parity)
 r2_MA= r2_score(Y_vals['MA Conv'], outputs_parity[:,0])
 r2_DMA = r2_score(Y_vals['DMA Conv'], outputs_parity[:,1])
-# print(r2_MA, r2_DMA)
+rmse_MA = root_mean_squared_error(Y_vals['MA Conv'], outputs_parity[:,0])
+rmse_DMA = root_mean_squared_error(Y_vals['DMA Conv'], outputs_parity[:,1])
+print(rmse_MA, rmse_DMA)
 fig, ax=plt.subplots(1,1,layout='constrained',sharex=True)
 ax1=ax
 ax1.errorbar(Y_vals['MA Conv'], outputs_parity[:,0], yerr=std_parity[:,0], color='black', capsize=3, linestyle='None')
@@ -154,7 +165,7 @@ ax1.legend(fontsize=11)
 plt.axline((0,0), slope=1, color = 'black', linestyle = '--')
 ax1.set_xlabel(r'Conversion (Experimental)',fontsize=11)
 ax1.set_ylabel(r'Conversion (Model)', fontsize=11)
-plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-parity_plot.pdf',dpi=300,bbox_inches='tight')
+plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-parity_plot_masked_0.05.pdf',dpi=300,bbox_inches='tight')
 
 #look at response of each conversion to feed comp and temperature
 cbar_yellowgreen=LinearSegmentedColormap.from_list('yellowgreen',['#624a31','#a47b31','#d5c552','#ffe66a']+green,N=250)
@@ -191,7 +202,7 @@ cbar1.set_label(label='DMA Conversion',fontsize=10)
 ax1.set_box_aspect(None, zoom=0.8)
 # ax1.plot_surface(X,Y,Z_DMA,color='#085a31', alpha=0.4)
 print(fig.get_size_inches())
-plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-DMA_Conversion.pdf',dpi=300,bbox_inches='tight')
+plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-DMA_Conversion_masked_0.05.pdf',dpi=300,bbox_inches='tight')
 plt.show()
 
 fig = plt.figure()
@@ -206,7 +217,7 @@ cbar1.set_label(label='MA Conversion',fontsize=10)
 ax1.set_box_aspect(None, zoom=0.8)
 # ax1.plot_surface(X,Y,Z_DMA,color='#085a31', alpha=0.4)
 print(fig.get_size_inches())
-plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-MA_Conversion.pdf',dpi=300,bbox_inches='tight')
+plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-MA_Conversion_masked_0.05.pdf',dpi=300,bbox_inches='tight')
 plt.show()
 
 print(gpr.kernel_.get_params())
@@ -239,7 +250,7 @@ ax.scatter(x, y, color='#085a31',marker='o',zorder=5, label= 'Gaussian Process D
 ax.set_xlabel(r'$\frac{f_{{MA}}^2(1-F_{{MA}})}{(1-f_{{MA}})^2F_{{MA}}}$',fontsize=11)
 ax.set_ylabel(r'$\frac{f_{{MA}}(2F_{{MA}}-1)}{(1-f_{{MA}})F_{{MA}}}$', fontsize=11)
 ax.legend(fontsize=11)
-# plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-reactivity_ratio_fitting.pdf',dpi=300,bbox_inches='tight')
+plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-reactivity_ratio_fitting_masked_0.05.pdf',dpi=300,bbox_inches='tight')
 fig.show()
 
 
@@ -375,5 +386,5 @@ cbar_DMA = fig.colorbar(
 
 cbar_DMA.set_label(r"$r_{{DMA}}$")
 print(fig.get_size_inches())
-plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-reactivity_ratio_responses.pdf',dpi=300,bbox_inches='tight')
+plt.savefig('C:/Users/ChemeGrad2020/Documents/Grad School/Research/Automated Synthesis Robot/gpr-copolymer-reactivity_ratio_responses_masked_0.05.pdf',dpi=300,bbox_inches='tight')
 
